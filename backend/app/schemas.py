@@ -27,5 +27,16 @@ class EntryPayload(BaseModel):
 
 
 class ActionPayload(BaseModel):
+    model_config = {"extra": "allow"}
+
     action: str
     remark: str | None = None
+    keep_id: int | str | None = None
+    keep_code: str | None = None
+    target_id: int | str | None = None
+    target_code: str | None = None
+    spec: str | None = None
+    strategy: str | None = None
+    choice: Any = None
+    operator: str | None = None
+    params: dict[str, Any] = Field(default_factory=dict)

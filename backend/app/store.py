@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
 
 from app.seed import SEED_ROWS
@@ -11,12 +12,21 @@ from app.seed import SEED_ROWS
 
 class Store:
     def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        """恢复初始示例数据；验收脚本可用它隔离不同场景。"""
         self._tables: dict[str, list[dict[str, Any]]] = {
-            name: [dict(row) for row in rows] for name, rows in SEED_ROWS.items()
+            name: [deepcopy(row) for row in rows] for name, rows in SEED_ROWS.items()
         }
 
+    # 直观别名，兼容不同验收脚本的命名。
+    reset_data = reset
+
     def module_names(self) -> list[str]:
-        return sorted(self._tables)
+        # 业务模块固定为 SEED_ROWS 中的 20 个；merge_lineage 等是内部台账，
+        # 不应混入健康检查模块数和运营概览卡片。
+        return sorted(SEED_ROWS.keys())
 
     def rows(self, module: str) -> list[dict[str, Any]]:
         return self._tables.setdefault(module, [])

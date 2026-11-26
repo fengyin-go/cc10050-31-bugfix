@@ -71,6 +71,40 @@ npm run dev
 | 人工复核队列 | `match_review` | 复核记录 | 记录编号、匹配记录、复核结论 |
 | 采集量指标 | `collect_metrics` | 指标记录 | 统计时间、站点名称、抓取量 |
 
+## 档案连续归并与规格基线追溯
+
+商品档案执行 A→B、B→C 连续合并后，旧编号 A 仍可在「商品登记中心」顶部
+输入并取得《商品档案查验回执》。后端会沿唯一 `merge_lineage` 归属链解析到
+最终档案 C，只让同规格（如 `500g`/`500克`/`0.5kg`）的生效基线经
+`baseline_links` 跟随；C 的 `250g` 基线不会被当成 A 的 `500g` 结果。
+
+页面提供「构造 A→B→C / 500g·250g 场景」按钮，也可调用：
+
+```text
+POST /api/dev/reset
+POST /api/dev/merge-baseline-scenario
+POST /api/goods_registry/{A_id}/merge        {"keep_id": <B_id>}
+POST /api/goods_registry/{B_id}/merge        {"keep_id": <C_id>}
+GET  /api/goods_registry/receipt/A?spec=500g
+GET  /api/goods_registry/by-code/A/receipt?spec=500g
+GET  /api/sku_match/spec-check/A?spec=500g
+GET  /api/sku_match/{match_id}/baseline?spec=500g
+POST /api/sku_match/{match_id}/recompute
+```
+
+已确认匹配会冻结原商品与当时基线（题面场景为 A / `500g` / `32`），后续 C 的
+`34` 只作为当前可读基线或在途重算选择，不能覆盖历史依据。在途重算可先
+`POST /api/sku_match/{id}/recalculations`，完成两次合并后再调用
+`/api/sku_match/recalculations/{job_id}/continue`：默认保留启动时的 `32`
+依据，传 `{"strategy":"latest"}` 则完整留痕地改采最终档案的 `34`。两种选择
+都会保存合并链、基线快照、基线链接和采用理由，供 `/recompute` 复算。
+
+完整接口验收可在后端启动后运行：
+
+```bash
+backend/.venv/bin/python -I acceptance/verify_merge_baseline.py
+```
+
 ## 约定
 
 - 全部模块共享`frontend/src/views/WorkbenchView.vue|tsx`和一套资源路由。

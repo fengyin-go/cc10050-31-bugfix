@@ -4,6 +4,58 @@ import type { ActionResult, EntryRow, OverviewResult, PageResult } from '@/data/
 
 export { moduleMeta }
 
+async function readJson<T>(response: Response): Promise<T> {
+  return (await response.json()) as T
+}
+
+export async function getJson<T = any>(path: string): Promise<T> {
+  const response = await request(path)
+  return readJson<T>(response)
+}
+
+export async function postJson<T = any>(path: string, body: Record<string, unknown> = {}): Promise<T> {
+  const response = await request(path, { method: 'POST', body: JSON.stringify(body) })
+  return readJson<T>(response)
+}
+
+export function goodsReceiptUrl(code: string, spec = ''): string {
+  const query = new URLSearchParams()
+  if (spec) query.set('spec', spec)
+  const suffix = query.toString() ? `?${query.toString()}` : ''
+  return `/api/goods_registry/receipt/${encodeURIComponent(code)}${suffix}`
+}
+
+export async function getGoodsReceipt(code: string, spec = ''): Promise<any> {
+  return getJson(goodsReceiptUrl(code, spec))
+}
+
+export async function mergeGoods(id: number | string, keeper: number | string): Promise<any> {
+  const key = /^\d+$/.test(String(keeper)) ? 'keep_id' : 'keep_code'
+  const value = /^\d+$/.test(String(keeper)) ? Number(keeper) : keeper
+  return postJson(`/api/goods_registry/${id}/merge`, { [key]: value })
+}
+
+export async function seedMergeScenario(): Promise<any> {
+  return postJson('/api/dev/merge-baseline-scenario', {})
+}
+
+export async function getSkuBaseline(id: number | string, spec = ''): Promise<any> {
+  const suffix = spec ? `?spec=${encodeURIComponent(spec)}` : ''
+  return getJson(`/api/sku_match/${id}/baseline${suffix}`)
+}
+
+export async function recomputeSkuMatch(id: number | string): Promise<any> {
+  return postJson(`/api/sku_match/${id}/recompute`, {})
+}
+
+export async function startSkuRecalculation(id: number | string, spec = ''): Promise<any> {
+  return postJson(`/api/sku_match/${id}/recalculations`, spec ? { spec } : {})
+}
+
+export async function continueSkuRecalculation(jobId: string, strategy = ''): Promise<any> {
+  return postJson(`/api/sku_match/recalculations/${encodeURIComponent(jobId)}/continue`, strategy ? { strategy } : {})
+}
+
 export async function listEntries(
   key: string,
   filters: Record<string, string> = {},
